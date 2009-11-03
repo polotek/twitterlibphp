@@ -39,11 +39,28 @@
 abstract class TwitterBase {
 
     /**
+     * Twitter site base url
+     */
+    const BASE_URL = 'http://twitter.com/';
+
+    /**
+     * Twitter api base url
+     */
+    const API_BASE_URL = 'http://api.twitter.com/1/';
+
+    /**
+     * the Twitter credentials as an array, username, password
+     * @access private
+     * @var array
+     */
+    protected $credentials;
+
+    /**
      * the last HTTP status code returned
      * @access private
      * @var integer
      */
-    private $http_status;
+    protected $http_status;
 
     /**
      * The response info from the last call (via curl_getinfo).  
@@ -52,21 +69,29 @@ abstract class TwitterBase {
      * @access private
      * @var array
      */
-    private $response_info;
+    protected $response_info;
 
     /**
      * the whole URL of the last API call
      * @access private
      * @var string
      */
-    private $last_api_call;
+    protected $last_api_call;
 
     /**
      * the application calling the API
      * @access private
      * @var string
      */
-    private $application_source;
+    protected $application_source;
+
+    /**
+     * Returns the username for this Twitter instance
+     * @return string
+     */
+    function getUsername() {
+        return $this->credentials['username'];
+    }
 
     /**
      * Returns the 20 most recent statuses from non-protected users who have set a custom user icon.
@@ -94,7 +119,11 @@ abstract class TwitterBase {
      * @return string
      */
     function getUserTimeline($options = array(), $format = 'xml') {
-        return $this->apiCall('statuses/user_timeline', 'get', $format, $options, true);
+        if(empty($credentials['password'])) {
+            return $this->apiCall('statuses/user_timeline/' . $this->credentials['username'], 'get', $format, $options);
+        } else {
+            return $this->apiCall('statuses/user_timeline', 'get', $format, $options, true);
+        }
     }
 
     /**
@@ -181,7 +210,7 @@ abstract class TwitterBase {
      */
     function showUser($options = array(), $format = 'xml') {
         if (!array_key_exists('id', $options) && !array_key_exists('user_id', $options) && !array_key_exists('screen_name', $options)) {
-            $options['id'] = substr($this->credentials, 0, strpos($this->credentials, ':'));
+            $options['id'] = $this->credentials['username'];
         }
         return $this->apiCall('users/show', 'get', $format, $options, false);
     }
@@ -296,7 +325,7 @@ abstract class TwitterBase {
      * @return string
      */
     function verifyCredentials($format = 'xml') {
-        return $this->apiCall('account/verify_credentials', 'get', $format, array());
+        return $this->apiCall('account/verify_credentials', 'get', $format, array(), true);
     }
 
     /**
@@ -486,13 +515,6 @@ abstract class TwitterBase {
 class Twitter extends TwitterBase {
 
     /**
-     * the Twitter credentials in HTTP format, username:password
-     * @access private
-     * @var string
-     */
-    private $credentials;
-
-    /**
      * Fills in the credentials {@link $credentials} and the application source {@link $application_source}.
      * @param string $username Twitter username
      * @param string $password Twitter password
@@ -500,7 +522,7 @@ class Twitter extends TwitterBase {
      */
     function __construct($username, $password, $source = null) {
         $this->response_info = array();
-        $this->credentials = sprintf("%s:%s", $username, $password);
+        $this->credentials = array('username' => $username, 'password' => $password);
         $this->application_source = $source;
     }
 
@@ -527,7 +549,7 @@ class Twitter extends TwitterBase {
      */
     protected function apiCall($twitter_method, $http_method, $format, $options, $require_credentials = true) {
         $curl_handle = curl_init();
-        $api_url = sprintf('http://twitter.com/%s.%s', $twitter_method, $format);
+        $api_url = sprintf('%s%s.%s', self::API_BASE_URL, $twitter_method, $format);
         if (($http_method == 'get') && (count($options) > 0)) {
             $api_url .= '?' . http_build_query($options);
         }
@@ -540,8 +562,10 @@ class Twitter extends TwitterBase {
         curl_setopt($curl_handle, CURLOPT_HTTPHEADER, array('Expect:'));
 
         if ($require_credentials) {
-            curl_setopt($curl_handle, CURLOPT_USERPWD, $this->credentials);
+            $cred = empty($this->credentials['password']) ? $this->credentials['username'] : join(':', $this->credentials);
+            curl_setopt($curl_handle, CURLOPT_USERPWD, $cred);
         }
+
         if ($http_method == 'post') {
             curl_setopt($curl_handle, CURLOPT_POST, true);
             curl_setopt($curl_handle, CURLOPT_POSTFIELDS, http_build_query($options));
