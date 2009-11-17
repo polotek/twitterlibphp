@@ -179,7 +179,7 @@ abstract class TwitterBase {
      * @return string
      */
     function destroyStatus($id, $format = 'xml') {
-        return $this->apiCall("statuses/destroy/{$id}", 'post', $format, $options);
+        return $this->apiCall("statuses/destroy/{$id}", 'post', $format, $options, true);
     }
 
     /**
@@ -244,9 +244,9 @@ abstract class TwitterBase {
      */
     function newMessage($user, $text, $format = 'xml') {
         $options = array(
-            'user' => $user,
-            'text' => $text
-            );
+                         'user' => $user,
+                         'text' => $text
+                         );
         return $this->apiCall('direct_messages/new', 'post', $format, $options);
     }
 
@@ -293,9 +293,9 @@ abstract class TwitterBase {
      */
     function friendshipExists($user_a, $user_b, $format = 'xml') {
         $options = array(
-            'user_a' => $user_a,
-            'user_b' => $user_b
-            );
+                         'user_a' => $user_a,
+                         'user_b' => $user_b
+                         );
         return $this->apiCall('friendships/exists', 'get', $format, $options);
     }
 
@@ -559,6 +559,8 @@ class Twitter extends TwitterBase {
         //do not include headers in the response
         curl_setopt($curl_handle, CURLOPT_HEADER, false);
         curl_setopt($curl_handle, CURLOPT_HEADERFUNCTION, array(&$this,'process_headers'));
+
+        // workaround for a bug in some versions of curl
         curl_setopt($curl_handle, CURLOPT_HTTPHEADER, array('Expect:'));
 
         if ($require_credentials) {
