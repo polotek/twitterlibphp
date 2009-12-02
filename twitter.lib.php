@@ -113,6 +113,17 @@ abstract class TwitterBase {
     }
 
     /**
+     * Returns the 20 most recent statuses posted by the authenticating user and that user's friends, 
+     * including retweets.
+     * @param array $options Options to pass to the method
+     * @param string $format Return format
+     * @return string
+     */
+    function getHomeTimeline($options = array(), $format = 'xml') {
+        return $this->apiCall('statuses/home_timeline', 'get', $format, $options, true);
+    }
+
+    /**
      * Returns the 20 most recent statuses posted from the authenticating user.
      * @param array $options Options to pass to the method
      * @param string $format Return format
